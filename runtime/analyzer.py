@@ -1,16 +1,41 @@
-def analyze_response(response: dict):
+RULES = {
+
+    "unexpected_status": lambda response: (
+        response.get("status_code") != 200
+    ),
+
+    "server_header_exposed": lambda response: (
+        "Server" in response.get(
+            "headers",
+            {}
+        )
+    ),
+
+    "missing_content_type": lambda response: (
+        "Content-Type" not in response.get(
+            "headers",
+            {}
+        )
+    )
+}
+
+
+def analyze_response(
+    response: dict,
+    enabled_rules: list
+):
 
     findings = []
 
-    status = response.get("status_code")
+    for rule_name in enabled_rules:
 
-    if status != 200:
-        findings.append("unexpected_status")
+        rule = RULES.get(rule_name)
 
-    headers = response.get("headers", {})
+        if not rule:
+            continue
 
-    if "Server" in headers:
-        findings.append("server_header_exposed")
+        if rule(response):
+            findings.append(rule_name)
 
     return {
         "valid": len(findings) == 0,

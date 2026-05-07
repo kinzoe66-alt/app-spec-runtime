@@ -1,9 +1,10 @@
 AppSpec = {
+
     "name": "api_security_probe",
 
     "intent": "analyze API behavior for inconsistencies",
 
-    "target": "https://httpbin.org/get",
+    "target": None,
 
     "workflow": [
         "INTERPRET",
@@ -16,11 +17,18 @@ AppSpec = {
     "tools": [
         "request_sender",
         "response_analyzer",
-        "diff_engine"
+        "report_generator"
+    ],
+
+    "analysis_rules": [
+        "unexpected_status",
+        "server_header_exposed",
+        "missing_content_type"
     ],
 
     "constraints": {
         "deterministic": True,
-        "trace": True
+        "trace": True,
+        "parallel_safe": True
     }
 }

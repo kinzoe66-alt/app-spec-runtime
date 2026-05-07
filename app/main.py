@@ -1,20 +1,32 @@
+import argparse
+
+from copy import deepcopy
+
+from concurrent.futures import ThreadPoolExecutor
+
 from core.engine import SequenceEngine
 from core.state import State
 from core.continuation import Continuation
 
 from runtime.pipeline import execute_phase
+from runtime.logger import log
 
 from specs.api_security_probe import AppSpec
 
 
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "--targets",
+    nargs="+",
+    required=True
+)
+
+args = parser.parse_args()
+
 engine = SequenceEngine()
 
 workflow = AppSpec["workflow"]
-
-state = State(
-    phase=workflow[0],
-    complete=False
-)
 
 continuation = Continuation(
     id="root",
@@ -23,28 +35,70 @@ continuation = Continuation(
 
 engine.activate(continuation)
 
-print("app_spec:", AppSpec)
+log("app_spec:", AppSpec)
 
-while not state.complete:
 
-    if state.phase not in workflow:
-        state.complete = True
-        break
+def scan_target(target):
 
-    decision = engine.decide(state)
+    local_spec = deepcopy(AppSpec)
 
-    print("state:", state.phase)
-    print("decision:", decision)
+    local_spec["target"] = target
 
-    result = execute_phase(
-        state.phase,
-        AppSpec
+    runtime_memory = {}
+
+    log("\nTARGET:", target)
+
+    state = State(
+        phase=workflow[0],
+        complete=False
     )
 
-    print("execution:", result)
+    while not state.complete:
 
-    state = engine.advance(state, decision)
+        if state.phase not in workflow:
+            state.complete = True
+            break
 
-    print("memory:", state.memory)
+        decision = engine.decide(state)
 
-print("DONE")
+        log("state:", state.phase)
+        log("decision:", decision)
+
+        result = execute_phase(
+            state.phase,
+            local_spec,
+            runtime_memory
+        )
+
+        log("execution:", result)
+
+        state = engine.advance(
+            state,
+            decision
+        )
+
+        log("memory:", state.memory)
+
+    return {
+        "target": target,
+        "last_state": state.phase,
+        "memory": state.memory,
+        "runtime_memory": runtime_memory
+    }
+
+
+with ThreadPoolExecutor(max_workers=5) as executor:
+
+    results = list(
+        executor.map(
+            scan_target,
+            args.targets
+        )
+    )
+
+log("\nSCAN SUMMARY")
+
+for result in results:
+    log(result)
+
+log("DONE")
