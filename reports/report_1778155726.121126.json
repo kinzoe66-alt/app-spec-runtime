@@ -1,0 +1,10 @@
+{
+  "summary": {
+    "issues_detected": 1,
+    "valid": false
+  },
+  "findings": [
+    "server_header_exposed"
+  ],
+  "timestamp": "2026-05-07T02:08:46.121111"
+}
